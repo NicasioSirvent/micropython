@@ -453,8 +453,13 @@ See more examples in the :ref:`esp32_pwm` tutorial.
 DAC (digital to analog conversion)
 ----------------------------------
 
+The ESP32 has two 8-bit DAC channels. Each channel can convert the digital value
+0 ~ 255 to the analog voltage 0 ~ Vref, Vref is the input from the the pin VDD3P3_RTC,
+which ideally equals the power supply VDD. 
+
 On the ESP32, DAC functionality is available on pins 25, 26.
 On the ESP32S2, DAC functionality is available on pins 17, 18.
+Some ESP32S2 Devkits have Pin 18 connected to LED, and they dont go down to 0V. 
 
 Use the DAC::
 
@@ -462,6 +467,35 @@ Use the DAC::
 
     dac = DAC(Pin(25))  # create an DAC object acting on a pin
     dac.write(128)      # set a raw analog value in the range 0-255, 50% now
+
+    # Generate continuous output using DMA (requires bytes array or list of values 0-255)
+    dac.write_continuous(data, freq, mode="once")  # once: default
+    dac.write_continuous(data, 500 * len(data), "loop") # 500 hz wave from data, looped
+
+    # Generate cosine wave (frequency, attenuation, phase 0/180, DC offset)
+    dac.cosine(1000)  # 1kHz cosine wave at full amplitude (no attn), 0° phase, no offset
+    dac.cosine(500000, dac.ATTN_6DB)  # 500Khz cosine, attn: 50%, 0° phase, no offset)
+
+    Notes:
+    attn values:
+    - ``DAC.ATTN_0DB``: (full scale), default
+    - ``DAC.ATTN_6DB``: (1/2)
+    - ``DAC.ATTN_12DB``: (1/4)
+    - ``DAC.ATTN_18DB``: (1/8)
+
+    phase values:
+    - ``DAC.PHASE_0``: (0 degree), default
+    - ``DAC.PHASE_180``: (180 degree)
+
+   DAC has frequency limitations:
+   - ``dac.cosine()`` requires frequency > ~ 100 Hz
+   - ``dac.write_continuous()`` requires frequency > ~ 80 Hz
+   - Up to several Mhz's depending on the board and system load.
+   - If a lower frequency is needed, use dac.write() and a timer interrupt.
+
+    # Stop any active timed/cosine output
+    dac.stop()  # return to basic oneshot mode
+
 
 ADC (analog to digital conversion)
 ----------------------------------
